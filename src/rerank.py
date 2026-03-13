@@ -12,6 +12,11 @@ except Exception:
     AutoTokenizer = None
     AutoModelForSequenceClassification = None
 
+try:
+    import torch
+except Exception:
+    torch = None
+
 # Fallback to sentence-transformers CrossEncoder for CPU-friendly reranking
 try:
     from sentence_transformers import CrossEncoder
@@ -22,7 +27,7 @@ except Exception:
 class Reranker:
     def __init__(self, model_name: str = "nvidia/llama-nemotron-rerank-vl-1b-v2", device: str = None):
         self.model_name = model_name
-        self.device = device or ("cuda" if (AutoModelForSequenceClassification is not None and hasattr(__import__('torch'), 'cuda') and __import__('torch').cuda.is_available()) else "cpu")
+        self.device = device or ("cuda" if (torch is not None and torch.cuda.is_available()) else "cpu")
         self.tokenizer = None
         self.model = None
         self.cross_encoder = None
@@ -32,7 +37,7 @@ class Reranker:
             if AutoTokenizer is not None and AutoModelForSequenceClassification is not None:
                 self.tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
                 self.model = AutoModelForSequenceClassification.from_pretrained(model_name)
-                if self.device.startswith("cuda") and __import__('torch').cuda.is_available():
+                if self.device.startswith("cuda") and torch is not None and torch.cuda.is_available():
                     self.model.to('cuda')
         except Exception:
             self.tokenizer = None
@@ -58,8 +63,7 @@ class Reranker:
             return [float(s) for s in scores]
 
         # If HF tokenizer+model is available, run a simple classification forward pass
-        if self.tokenizer is not None and self.model is not None:
-            import torch
+        if self.tokenizer is not None and self.model is not None and torch is not None:
             self.model.eval()
             out_scores = []
             with torch.no_grad():

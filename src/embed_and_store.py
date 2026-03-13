@@ -20,25 +20,22 @@ except Exception:
     Collection = None
     utility = None
 
-from PIL import Image
-import torch
-from typing import List, Dict, Any
-import os
-import numpy as np
+try:
+    from PIL import Image
+except Exception:
+    Image = Any
 
 try:
-    from pymilvus import connections, FieldSchema, CollectionSchema, DataType, Collection, utility
+    import torch
 except Exception:
-    connections = None
-    FieldSchema = None
-    CollectionSchema = None
-    DataType = None
-    Collection = None
-    utility = None
+    torch = None
 
-from PIL import Image
-import torch
-from transformers import AutoProcessor, AutoModel, AutoTokenizer
+try:
+    from transformers import AutoProcessor, AutoModel, AutoTokenizer
+except Exception:
+    AutoProcessor = None
+    AutoModel = None
+    AutoTokenizer = None
 
 # Fallback: sentence-transformers for CPU-friendly embeddings
 try:
@@ -57,8 +54,12 @@ class Embedder:
 
     def __init__(self, model_name: str = "nvidia/llama-nemotron-embed-vl-1b-v2", device: str = None):
         self.model_name = model_name
-        self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
-        self.torch_dtype = torch.float16 if (self.device.startswith("cuda") and torch.cuda.is_available()) else torch.float32
+        has_torch = torch is not None
+        self.device = device or ("cuda" if (has_torch and torch.cuda.is_available()) else "cpu")
+        if has_torch:
+            self.torch_dtype = torch.float16 if (self.device.startswith("cuda") and torch.cuda.is_available()) else torch.float32
+        else:
+            self.torch_dtype = None
 
         self.tokenizer = None
         self.model = None
@@ -67,10 +68,14 @@ class Embedder:
 
         # Try to load the HF model (text encoder / multimodal processor)
         try:
+            if AutoTokenizer is None or AutoModel is None:
+                raise RuntimeError("transformers is unavailable")
             # Use device_map="auto" where possible; transformers will place layers on available devices
             self.tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
             self.model = AutoModel.from_pretrained(model_name, torch_dtype=self.torch_dtype, device_map="auto")
             try:
+                if AutoProcessor is None:
+                    raise RuntimeError("AutoProcessor is unavailable")
                 self.processor = AutoProcessor.from_pretrained(model_name)
             except Exception:
                 self.processor = None
@@ -91,7 +96,7 @@ class Embedder:
             emb = self.st_model.encode(texts, convert_to_numpy=True, normalize_embeddings=True)
             return [e.astype(np.float32) for e in emb]
 
-        if self.tokenizer is not None and self.model is not None:
+        if self.tokenizer is not None and self.model is not None and torch is not None:
             self.model.eval()
             out = []
             with torch.no_grad():
@@ -109,7 +114,7 @@ class Embedder:
 
     def embed_image(self, images: List[Image.Image]) -> List[np.ndarray]:
         # If processor + model support pixel inputs, try to obtain image features
-        if self.processor is not None and self.model is not None:
+        if self.processor is not None and self.model is not None and torch is not None:
             self.model.eval()
             out = []
             with torch.no_grad():
