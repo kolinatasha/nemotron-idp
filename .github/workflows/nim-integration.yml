@@ -1,0 +1,43 @@
+name: NIM Integration
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_environment:
+        description: "Environment to validate (must exist in GitHub Environments)"
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+
+jobs:
+  integration-test:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.target_environment }}
+    env:
+      NVIDIA_API_KEY: ${{ secrets.NVIDIA_NIM_API_KEY }}
+      NIM_ENDPOINT: ${{ vars.NIM_ENDPOINT }}
+      NIM_MODEL: ${{ vars.NIM_MODEL }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest
+
+      - name: Verify required secret
+        run: |
+          python -c "import os,sys; sys.exit(0 if os.environ.get('NVIDIA_API_KEY') else 1)"
+
+      - name: Run live NIM integration test
+        run: |
+          pytest -q tests/test_nim_integration.py

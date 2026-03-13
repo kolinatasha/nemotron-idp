@@ -5,6 +5,7 @@ on:
     branches: [ main, master ]
   pull_request:
     branches: [ main, master ]
+  workflow_dispatch:
 
 jobs:
   test:
@@ -26,4 +27,4 @@ jobs:
         pip install pytest
     - name: Run tests
       run: |
-        pytest -q
+        pytest -q tests/test_smoke.py
