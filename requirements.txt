@@ -1,0 +1,17 @@
+nv-ingest>=0.1.0
+pymilvus>=2.2.1
+pillow>=10.0.0
+transformers>=4.35.0
+accelerate>=0.22.0
+sentence-transformers>=2.2.2
+torch>=2.0.0
+torchvision>=0.15.0
+opencv-python>=4.7.0
+camelot-py[cv]>=0.10.1
+requests>=2.30.0
+fastapi>=0.95.0
+uvicorn>=0.23.0
+yapf>=0.40.0
+pandas>=2.1.0
+matplotlib>=3.8.0
+pytest>=7.4.0
